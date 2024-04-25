@@ -1,55 +1,36 @@
-import 'dart:convert';
+import 'package:adrplexus/controller/listController.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:http/http.dart' as http;
-
-void main() {
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Cubit Example',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: BlocProvider(
-        create: (context) => DataCubit(),
-        child: MyHomePage(),
-      ),
-    );
-  }
-}
 
 class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final DataCubit dataCubit = BlocProvider.of<DataCubit>(context);
-
+    dataCubit.fetchData();
     return Scaffold(
       appBar: AppBar(
-        title: Text('Flutter Cubit Example'),
+        title: const Text('AdrPlexus'),
       ),
       body: BlocBuilder<DataCubit, DataState>(
         builder: (context, state) {
           if (state is DataInitial) {
-            return Center(
+            return const Center(
               child: CircularProgressIndicator(),
             );
           } else if (state is DataLoaded) {
-            return ListView.builder(
+            return ListView.separated(
               itemCount: state.items.length,
               itemBuilder: (context, index) {
                 return ListTile(
-                  title: Text('Name: ${state.items[index].name}, Age: ${state.items[index].age}'),
+                  title: Text('UserID: ${state.items[index].user ?? "No Data" } , Gender: ${state.items[index].gender ?? "No Data"}'),
                 );
               },
-            );
+            separatorBuilder: (context, index) {
+    return Divider();
+  },
+              );
           } else if (state is DataError) {
-            return Center(
+            return const Center(
               child: Text('Failed to fetch data'),
             );
           } else {
@@ -61,66 +42,8 @@ class MyHomePage extends StatelessWidget {
         onPressed: () {
           dataCubit.fetchData();
         },
-        child: Icon(Icons.refresh),
+        child: const Icon(Icons.refresh),
       ),
     );
   }
 }
-
-class DataCubit extends Cubit<DataState> {
-  DataCubit() : super(DataInitial());
-
-  Future<void> fetchData() async {
-    try {
-      final response1 = await http.get(Uri.parse('API_ENDPOINT_1'));
-      final response2 = await http.get(Uri.parse('API_ENDPOINT_2'));
-
-      if (response1.statusCode == 200 && response2.statusCode == 200) {
-        final List<dynamic> data1 = jsonDecode(response1.body);
-        final List<dynamic> data2 = jsonDecode(response2.body);
-
-        List<DataModel> combinedData = [];
-
-        data1.forEach((item) {
-          combinedData.add(DataModel.fromJson(item));
-        });
-
-        data2.forEach((item) {
-          combinedData.add(DataModel.fromJson(item));
-        });
-
-        emit(DataLoaded(combinedData));
-      } else {
-        emit(DataError());
-      }
-    } catch (e) {
-      emit(DataError());
-    }
-  }
-}
-
-class DataModel {
-  final String name;
-  final int age;
-
-  DataModel({required this.name, required this.age});
-
-  factory DataModel.fromJson(Map<String, dynamic> json) {
-    return DataModel(
-      name: json['name'],
-      age: json['age'],
-    );
-  }
-}
-
-abstract class DataState {}
-
-class DataInitial extends DataState {}
-
-class DataLoaded extends DataState {
-  final List<DataModel> items;
-
-  DataLoaded(this.items);
-}
-
-class DataError extends DataState {}
